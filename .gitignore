@@ -1,0 +1,15 @@
+# Directorios
+bin/
+obj/
+
+# Archivos de compilación
+*.dll
+*.exe
+*.pdb
+
+# Archivos de configuración local
+appsettings.json
+appsettings.Development.json
+
+#Configuracion visual code
+.vs/
