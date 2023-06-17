@@ -1,4 +1,5 @@
-﻿using Domain.Entities;
+﻿using Application.Interfaces;
+using Domain.Entities;
 using Infraestructure.Abstracts;
 using Infraestructure.Implements;
 using Infraestructure.Interfaces;
@@ -6,54 +7,52 @@ using System.Net.Sockets;
 
 namespace Application.Services
 {
-    public class ServerServices
+    public class ServerServices : IServerServices
     {
 
+        private readonly IEntityRepository<ClientConnection> _entityRepository;
+        private readonly AbstractObjectPool<ClientConnection> clientConnectionPool;
 
-        private AbstractObjectPool<ClientConnection> clientConnectionPool;
-
-        public ServerServices(int maxClients) { 
+        public ServerServices(IEntityRepository<ClientConnection> entityRepository, int maxClients)
+        {
             IObjectFactory<ClientConnection> factory = new ClientConnectionFactory();
             clientConnectionPool = new ClientConnectionPool(factory, maxClients);
+            _entityRepository = entityRepository;
+            Console.WriteLine("Hola");
         }
 
-        public void HandleClientConnection(TcpClient client)
+        public bool deleteConnectionClient(ClientConnection client)
         {
-            // Obtener una conexión de cliente del pool
+            if(!_entityRepository.deleteEntity(client)) return false;
+
+            clientConnectionPool.Release(client);
+            return true;
+        }
+
+
+        public ClientConnection? newConnectionClient(TcpClient client)
+        {
+
             ClientConnection connection = clientConnectionPool.Get();
 
 
-            if (connection == null)
+            if (connection == null) return null;
+
+            connection.TcpClient = client;
+
+            if (!_entityRepository.newEntity(connection))
             {
-                NetworkStream stream = client.GetStream();
-                string dataToSend = "Servidor lleno por el momento";
-                byte[] data = System.Text.Encoding.ASCII.GetBytes(dataToSend);
-                stream.Write(data, 0, data.Length);
-                return;
+                clientConnectionPool.Release(connection);
+                return null;
             }
 
-            // Tratar la conexión de cliente en un hilo de ejecución separado
-            Thread thread = new Thread(() =>
-            {
-                try
-                {
-                    while (true)
-                    {
-                        // Realizar operaciones con la conexión de cliente
-                        Console.WriteLine("Handling client connection");
-                        Thread.Sleep(2000); // Simulando operaciones con la conexión
-                    }
-                    
-                }
-                finally
-                {
-                    Console.WriteLine("Cliente desconectado");
-                    // Devolver la conexión al pool cuando el cliente se desconecte
-                    clientConnectionPool.Release(connection);
-                }
-            });
 
-            thread.Start();
+            return connection;
+        }
+
+        public List<ClientConnection> getConnectionClients()
+        {
+            return _entityRepository.getEntities();
         }
     }
 }

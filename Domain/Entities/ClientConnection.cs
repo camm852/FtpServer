@@ -1,13 +1,15 @@
 ﻿using Domain.Interfaces;
+using System.Net;
 using System.Net.Sockets;
 
 namespace Domain.Entities
 {
-    public class ClientConnection : TcpClient , IPoolableObject
+    public class ClientConnection : IPoolableObject
     {
         private string ipAddress;
         private string date;
         private string hour;
+        private TcpClient tcpClient;
 
 
         public string IpAddress
@@ -28,10 +30,22 @@ namespace Domain.Entities
             set { hour = value; }
         }
 
-        public ClientConnection() : base() { 
+        public TcpClient TcpClient
+        {
+            get { return tcpClient; }
+            set {
+                ipAddress = ((IPEndPoint)value.Client.RemoteEndPoint).Address.ToString();
+                date = DateTime.Now.ToShortDateString();
+                hour = DateTime.Now.ToShortTimeString();
+                tcpClient = value; 
+            }  
+        }
+
+        public ClientConnection() { 
             this.ipAddress = "";
             this.date = "";  
             this.hour = "";
+            this.tcpClient = new TcpClient();
         }
 
 
@@ -45,6 +59,9 @@ namespace Domain.Entities
             this.IpAddress = "";
             this.Date = "";
             this.Hour = "";
+            this.tcpClient.Close();
+            this.tcpClient.Dispose();
         }
+
     }
 }
