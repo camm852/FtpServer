@@ -13,13 +13,16 @@
     using System.Text;
     using Newtonsoft.Json;
     using FtpProject.Mappers;
+    using System.IO;
 
     public class Program
     {
+        static Semaphore semaphore = new Semaphore(1, 1); // Crea un semáforo
+
         public static void Main(string[] args)
         {
 
-            ServerController serverController = new ServerController();
+            ServerController serverController = new ServerController("../../../Documents/");
 
             int port = 5000;
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
@@ -55,61 +58,94 @@
 
             ClientConnection connection = serverController.newConnection(client);
 
+            
+            int bytesRead = 0;
+
+            string dataToSend = "";
+            string requestJson = "";
+
+            RequestDto request = new RequestDto();
+            ResponseDto response = new ResponseDto();
+
 
             if (connection == null)
             {
+                response.Status = "503";
+                response.Data = "Servidor lleno por el momento";
                 NetworkStream stream = client.GetStream();
-                string dataToSend = "Servidor lleno por el momento";
-                byte[] data = System.Text.Encoding.ASCII.GetBytes(dataToSend);
-                stream.Write(data, 0, data.Length);
+                dataToSend = JsonConvert.SerializeObject(response);
+                byte [] buffer = System.Text.Encoding.ASCII.GetBytes(dataToSend);
+                stream.Write(buffer, 0, buffer.Length);
                 return;
             }
+            else
+            {
+                response.Status = "200";
+                response.Data = "Logeado";
+                NetworkStream stream = client.GetStream();
+                dataToSend = JsonConvert.SerializeObject(response);
+                byte[] buffer = System.Text.Encoding.ASCII.GetBytes(dataToSend);
+                stream.Write(buffer, 0, buffer.Length);
+            }
 
-
+       
             // Tratar la conexión de cliente en un hilo de ejecución separado
             Thread thread = new Thread(() =>
             {
+                Console.WriteLine($"Cliente conectado desde {connection.IpAddress}");
+
+                NetworkStream stream = connection.TcpClient.GetStream(); // para leer lo enviado por los sockets
+                byte[] bufferGetMessages = new byte[1024];
+
                 try
                 {
-                    Console.WriteLine($"Cliente conectado desde {connection.IpAddress}");
-
-                    NetworkStream stream = connection.TcpClient.GetStream();
-                    byte[] buffer = new byte[4048];
-                    int bytesRead = 0;
-                    String requestJson = "";
-                    RequestDto request = new RequestDto();
-                    ResponseDto response = new ResponseDto();
                     while (true)
                     {
-                        if ((bytesRead = stream.Read(buffer, 0, buffer.Length)) <= 0 && !connection.TcpClient.Connected)
+                        if ((bytesRead = stream.Read(bufferGetMessages, 0, bufferGetMessages.Length)) <= 0 && !connection.TcpClient.Connected)
                         {
-                            Console.WriteLine("Desconectado");
                             break;
                         }
 
-                        //Convertir el json a mi Dto
-                        requestJson = Encoding.UTF8.GetString(buffer, 0, buffer.Length);
-                        request = JsonConvert.DeserializeObject<RequestDto>(requestJson);
+                        requestJson = Encoding.UTF8.GetString(bufferGetMessages, 0, bufferGetMessages.Length);
+
+                        request = JsonConvert.DeserializeObject<RequestDto>(requestJson); //Convertir el string en json
 
 
                         string service = request.Service.ToLower();
                         string type = request.Type.ToLower();
+                        string body = request.Body;
 
                         if (type.Equals("get"))
                         {
 
                             if (service.Equals("list-users"))
                             {
-                                String getAllConnections = ConnectionsMapper.fromConnectionsToString(serverController.listConnections());
+                                semaphore.WaitOne(); // El hilo espera para tomar el semáforo (recurso)
+
+                                String getAllConnections = ServerMappers.fromConnectionsToString(serverController.listConnections());
+
+                                semaphore.Release(); // El hilo libera el semáforo (recurso)
+
 
                                 response.Status = "200";
                                 response.Data = getAllConnections;
+
 
                             }
                             else if (service.Equals("list-documents"))
                             {
 
-                            }else if (service.Equals("get-document"))
+                                semaphore.WaitOne(); // El hilo espera para tomar el semáforo (recurso)
+
+                                String getAllConnections = ServerMappers.fromDocumentsToString(serverController.listDocuments(connection.IpAddress));
+
+                                semaphore.Release(); // El hilo libera el semáforo (recurso)
+
+
+                                response.Status = "200";
+                                response.Data = getAllConnections;
+                            }
+                            else if (service.Equals("get-document"))
                             {
 
                             }
@@ -118,49 +154,87 @@
                                 response.Status = "404";
                                 response.Data = "servicio no disponible";
                             }
-                            string dataToSend = JsonConvert.SerializeObject(response);
-                            buffer = System.Text.Encoding.UTF8.GetBytes(dataToSend);
-                            stream.Write(buffer, 0, buffer.Length);
-                            Array.Clear(buffer, 0, buffer.Length);
-
                         }
                         else if (type.Equals("post"))
                         {
 
                             if (service.Equals("send-document"))
                             {
+                                response.Status = "200";
+                                response.Data = "Listo para recibir";
+                                dataToSend = JsonConvert.SerializeObject(response);
+                                byte [] buffer = System.Text.Encoding.UTF8.GetBytes(dataToSend);
+                                stream.Write(buffer, 0, buffer.Length);
 
+                                //Leer los bytes del archivo
+                                MemoryStream memoryStream = new MemoryStream();
+
+                                byte[] bufferDocument = new byte[5000];
+
+                                while ((bytesRead = stream.Read(bufferDocument, 0, bufferDocument.Length)) > 0)
+                                {
+                                    memoryStream.Write(bufferDocument, 0, bufferDocument.Length);
+                                }
+
+                                semaphore.WaitOne(); // El hilo espera para tomar el semáforo (recurso)
+
+                                bool isDocumentSaved = serverController.saveDocument(memoryStream.ToArray(), body, connection.IpAddress);
+
+                                semaphore.Release(); // El hilo libera el semáforo (recurso)
+
+
+                                if (!isDocumentSaved) {
+                                    response.Status = "500";
+                                    response.Data = "Error al recibir el archivo";
+                                }
+                                else
+                                {
+                                    response.Status = "201";
+                                    response.Data = "Archivo recibido correctamente";
+                                }
                             }
                             else
                             {
                                 response.Status = "404";
                                 response.Data = "servicio no disponible";
                             }
-                            string dataToSend = JsonConvert.SerializeObject(response);
-                            buffer = System.Text.Encoding.UTF8.GetBytes(dataToSend);
-                            stream.Write(buffer, 0, buffer.Length);
-                            Array.Clear(buffer, 0, buffer.Length);
+                            
                         }
                         else
                         {
                             response.Status = "400";
                             response.Data = "servicio no disponible";
-
-                            string dataToSend = JsonConvert.SerializeObject(response);
-                            buffer = System.Text.Encoding.UTF8.GetBytes(dataToSend);
-                            stream.Write(buffer, 0, buffer.Length);
-                            Array.Clear(buffer, 0, buffer.Length);
                         }
 
+                        dataToSend = JsonConvert.SerializeObject(response);
+                        byte [] bufferSend = System.Text.Encoding.UTF8.GetBytes(dataToSend);
+                        stream.Write(bufferSend, 0, bufferSend.Length);
                     }
-
-                }catch(Exception e)
+                }
+                catch(Exception ex)
                 {
+                    if (connection.TcpClient.Connected)
+                    {
+                        ResponseDto response = new ResponseDto()
+                        {
+                            Status = "503",
+                            Data = "Hubo un error en el servidor"
+                        };
 
+                        dataToSend = JsonConvert.SerializeObject(response);
+                        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(dataToSend);
+                        stream.Write(buffer, 0, buffer.Length);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Algo ha fallado en el servidor " + ex.Message);
+                    }
+                    
                 }
                 finally
                 {
-                    Console.WriteLine("Cliente desconectado");
+                    Console.WriteLine($"Cliente {connection.IpAddress} desconectado");
+
                     // Devolver la conexión al pool cuando el cliente se desconecte
                     serverController.deleteConnection(connection);
                 }
