@@ -18,7 +18,6 @@ namespace Application.Services
             IObjectFactory<ClientConnection> factory = new ClientConnectionFactory();
             clientConnectionPool = new ClientConnectionPool(factory, maxClients);
             _entityRepository = entityRepository;
-            Console.WriteLine("Hola");
         }
 
         public bool deleteConnectionClient(ClientConnection client)
