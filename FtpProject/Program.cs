@@ -23,7 +23,7 @@
         public static void Main(string[] args)
         {
 
-            ServerController serverController = new ServerController(0, "../../../Documents/");
+            ServerController serverController = new ServerController(1, "../../../Documents/");
 
             int port = 5000;
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
@@ -169,7 +169,14 @@
                                     Console.WriteLine($"Se envio archivo {fileInfo.Name} a {connection.IpAddress}");
 
                                     fileStream.Close();
-                                    continue;
+
+                                    Thread.Sleep(1500); //Tiempo de espera para que no se concatene el buffer
+
+
+                                    response.status = "200";
+                                    response.data = "Archivo descargado correctamente";
+
+                                    //continue;
                                 }
                             }
                             else
@@ -267,7 +274,7 @@
                     }
                     else
                     {
-                        Console.WriteLine("Algo ha fallado en el servidor " + ex.Message);
+                        Console.WriteLine("Algo ha fallado en el servidor ");
                     }
                 }
                 finally
