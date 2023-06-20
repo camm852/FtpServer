@@ -150,7 +150,6 @@
                                 }
                                 else
                                 {
-
                                     response.status = "200";
                                     response.data = "El archivo se enviara en breve";
                                     dataToSend = JsonConvert.SerializeObject(response);
@@ -280,7 +279,6 @@
                 }
             });
             thread.Start();
-            Console.WriteLine("hilo finalizado");
         }
 
     }
