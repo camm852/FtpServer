@@ -51,7 +51,7 @@ namespace Domain.Entities
 
         public string toString()
         {
-            return $"Client ip: {this.ipAddress} - date: {this.date} - hour: {this.hour}";
+            return $"{this.ipAddress}-{this.date}-{this.hour}";
         }
 
         public void Reset()

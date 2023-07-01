@@ -9,3 +9,4 @@ namespace Infraestructure.Interfaces
         List<T> getEntities();
     }
 }
+    

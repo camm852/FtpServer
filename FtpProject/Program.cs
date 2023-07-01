@@ -6,9 +6,9 @@
     using FtpProject.Mappers;
     using Newtonsoft.Json;
     using System;
-    using System.Collections;
     using System.IO;
     using System.Net;
+    using System.Net.NetworkInformation;
     using System.Net.Sockets;
     using System.Text;
 
@@ -23,10 +23,33 @@
         public static void Main(string[] args)
         {
 
-            ServerController serverController = new ServerController(1, "../../../Documents/");
-
             int port = 5000;
             IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
+
+            NetworkInterface wifiInterface = GetActiveWifiInterface();
+            NetworkInterface ethernetInterface = GetActiveEthernetInterface();
+
+            if (wifiInterface != null)
+            {
+                Console.WriteLine("Conectado a través de Wi-Fi");
+                Console.WriteLine("Nombre de la interfaz: " + wifiInterface.Name);
+                Console.WriteLine("Descripción: " + wifiInterface.Description);
+                ipAddress = IPAddress.Parse(GetIPv4Address(wifiInterface));
+            }
+            else if (ethernetInterface != null)
+            {
+                Console.WriteLine("Conectado a través de Ethernet");
+                Console.WriteLine("Nombre de la interfaz: " + ethernetInterface.Name);
+                Console.WriteLine("Descripción: " + ethernetInterface.Description);
+                ipAddress = IPAddress.Parse(GetIPv4Address(ethernetInterface));
+            }
+
+
+            ServerController serverController = new ServerController(2, @"C:\FtpDocuments\");
+
+
+            //Socket para clientes
+            
             TcpListener listener = new TcpListener(ipAddress, port);
             
 
@@ -54,6 +77,49 @@
 
         }
 
+        private static NetworkInterface GetActiveWifiInterface()
+        {
+            NetworkInterface[] interfaces = NetworkInterface.GetAllNetworkInterfaces();
+
+            foreach (NetworkInterface nic in interfaces)
+            {
+                if (nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 && nic.OperationalStatus == OperationalStatus.Up)
+                {
+                    return nic;
+                }
+            }
+
+            return null;
+        }
+
+        private static NetworkInterface GetActiveEthernetInterface()
+        {
+            NetworkInterface[] interfaces = NetworkInterface.GetAllNetworkInterfaces();
+
+            foreach (NetworkInterface nic in interfaces)
+            {
+                if (nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet && nic.OperationalStatus == OperationalStatus.Up)
+                {
+                    return nic;
+                }
+            }
+
+            return null;
+        }
+
+        private static string GetIPv4Address(NetworkInterface networkInterface)
+        {
+            IPInterfaceProperties properties = networkInterface.GetIPProperties();
+            IPAddress ipAddress = properties
+                .UnicastAddresses
+                .FirstOrDefault(address =>
+                    address.Address.AddressFamily == AddressFamily.InterNetwork
+                )?.Address;
+
+            return ipAddress?.ToString();
+        }
+
+
         private static void HandleClientConnection(ServerController serverController, TcpClient client)
         {
             Thread thread = new Thread(() => //Lanzando hilo
@@ -70,7 +136,7 @@
                     NetworkStream streamNullConnection = client.GetStream();
                     string data = JsonConvert.SerializeObject(responseNullConnection);
                     byte[] bufferNullConnection = System.Text.Encoding.ASCII.GetBytes(data);
-                    streamNullConnection.Write(bufferNullConnection, 0, bufferNullConnection.Length);
+                    streamNullConnection.Write(bufferNullConnection, 0, bufferNullConnection.Length);// Rechazar conexion
                     return;
                 }
 
@@ -259,7 +325,7 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    //Console.WriteLine(ex);
                     if (connection.TcpClient.Connected)
                     {
                         ResponseDto responseCloseConnection = new ResponseDto()

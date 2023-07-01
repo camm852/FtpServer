@@ -4,8 +4,9 @@ using Domain.Entities;
 using FtpProject.Dto;
 using Infraestructure.Implements;
 using Infraestructure.Interfaces;
+using System.IO;
 using System.Net.Sockets;
-using System.Xml.Linq;
+using System.Security.AccessControl;
 
 namespace FtpProject.Controller
 {
@@ -16,6 +17,26 @@ namespace FtpProject.Controller
         private string pathDocuments = "";
         public ServerController(int maxConections, string pathDocuments)
         {
+            if (!Directory.Exists(pathDocuments))
+            {
+                // Crear el directorio con permisos adicionales
+                Directory.CreateDirectory(pathDocuments);
+
+                // Obtener los permisos actuales del directorio
+                DirectoryInfo dirInfo = new DirectoryInfo(pathDocuments);
+                DirectorySecurity directorioSeguridad = dirInfo.GetAccessControl();
+
+                // Agregar permisos para el usuario actual
+                string usuarioActual = Environment.UserName;
+                FileSystemAccessRule accesoUsuarioActual = new FileSystemAccessRule(usuarioActual, FileSystemRights.FullControl, AccessControlType.Allow);
+                directorioSeguridad.AddAccessRule(accesoUsuarioActual);
+
+                // Establecer los nuevos permisos en el directorio
+                dirInfo.SetAccessControl(directorioSeguridad);
+
+            }
+
+
             _clientRepository = new EntityRepository<ClientConnection>();
             _serverServices = new ServerServices(_clientRepository, maxConections);
             this.pathDocuments = pathDocuments;
