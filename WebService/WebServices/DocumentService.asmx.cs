@@ -28,11 +28,19 @@ namespace WebService.WebServices
             string directory = @"C:\FtpDocuments\";
 
             FileStream fileStream = null;
-            fileStream = System.IO.File.Open(directory+documentName, FileMode.Open, FileAccess.Read);
-            byte[] bufferDocument = new byte[fileStream.Length];
-            fileStream.Read(bufferDocument, 0, (int)fileStream.Length);
-            fileStream.Close();
-            return bufferDocument;
+            try
+            {
+                fileStream = System.IO.File.Open(directory + documentName, FileMode.Open, FileAccess.Read);
+                byte[] bufferDocument = new byte[fileStream.Length];
+                fileStream.Read(bufferDocument, 0, (int)fileStream.Length);
+                fileStream.Close();
+                return bufferDocument;
+            }
+            catch(Exception ex)
+            {
+                return null;
+            }
+            
         }
 
         [WebMethod]

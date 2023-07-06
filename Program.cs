@@ -146,6 +146,7 @@
                 int bytesRead = 0;
                 string dataToSend = "";
                 string requestJson = "";
+                byte[] bufferGetMessages = new byte[1024];
 
                 NetworkStream streamConnection = connection.TcpClient.GetStream(); // para leer lo enviado por los sockets
                 streamConnection.ReadTimeout = maxReadTimeOut;
@@ -164,15 +165,12 @@
                 {
                     while (true)
                     {
-                        byte[] bufferGetMessages = new byte[1024];
                         if ((bytesRead = streamConnection.Read(bufferGetMessages, 0, bufferGetMessages.Length)) <= 0 && !connection.TcpClient.Connected)
                         {
                             break;
                         }
 
-
                         requestJson = Encoding.UTF8.GetString(bufferGetMessages, 0, bufferGetMessages.Length);
-                        Console.WriteLine(requestJson);
                         request = JsonConvert.DeserializeObject<RequestDto>(requestJson);
 
                         string service = request.service.ToLower();
@@ -327,7 +325,7 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    //Console.WriteLine(ex);
                     if (connection.TcpClient.Connected)
                     {
                         ResponseDto responseCloseConnection = new ResponseDto()

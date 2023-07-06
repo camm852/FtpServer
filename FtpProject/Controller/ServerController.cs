@@ -24,15 +24,15 @@ namespace FtpProject.Controller
 
                 // Obtener los permisos actuales del directorio
                 DirectoryInfo dirInfo = new DirectoryInfo(pathDocuments);
-                DirectorySecurity directorioSeguridad = dirInfo.GetAccessControl();
+                //DirectorySecurity directorioSeguridad = dirInfo.GetAccessControl();
 
-                // Agregar permisos para el usuario actual
-                string usuarioActual = Environment.UserName;
-                FileSystemAccessRule accesoUsuarioActual = new FileSystemAccessRule(usuarioActual, FileSystemRights.FullControl, AccessControlType.Allow);
-                directorioSeguridad.AddAccessRule(accesoUsuarioActual);
+                //// Agregar permisos para el usuario actual
+                //string usuarioActual = Environment.UserName;
+                //FileSystemAccessRule accesoUsuarioActual = new FileSystemAccessRule(usuarioActual, FileSystemRights.FullControl, AccessControlType.Allow);
+                //directorioSeguridad.AddAccessRule(accesoUsuarioActual);
 
-                // Establecer los nuevos permisos en el directorio
-                dirInfo.SetAccessControl(directorioSeguridad);
+                //// Establecer los nuevos permisos en el directorio
+                //dirInfo.SetAccessControl(directorioSeguridad);
 
             }
 
