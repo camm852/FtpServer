@@ -55,7 +55,6 @@
 
             listener.Start(); //Inicio server
 
-            //Console.WriteLine(Directory.GetCurrentDirectory());
 
             Console.WriteLine($"Servidor con Ip: {ipAddress} escuchando por el puerto: {port}. Esperando conexiones...");
 
@@ -172,7 +171,7 @@
 
 
                         requestJson = Encoding.UTF8.GetString(bufferGetMessages, 0, bufferGetMessages.Length);
-                        Console.WriteLine(requestJson);
+                        Console.WriteLine($"{connection.IpAddress} : {requestJson}");
                         request = JsonConvert.DeserializeObject<RequestDto>(requestJson);
 
                         string service = request.service.ToLower();
@@ -327,7 +326,7 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    //Console.WriteLine(ex);
                     if (connection.TcpClient.Connected)
                     {
                         ResponseDto responseCloseConnection = new ResponseDto()
